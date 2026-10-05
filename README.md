@@ -44,6 +44,8 @@ cp .env.example .env   # fill in tokens
 docker compose up --build
 ```
 
+Pass env into the container the same way as other bots (Coolify UI, or `docker run --env-file .env`).
+
 Or build and run without Compose:
 
 ```bash
