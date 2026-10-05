@@ -6,7 +6,7 @@ import {
   shouldStartReviewFromEvent,
   ticketIdFromEvent,
 } from "./events.js";
-import { latestFixGitContext } from "./fix-context.js";
+import { resolveTicketGitContext } from "./ticket-git-context.js";
 import {
   alreadyReviewedMessage,
   alreadyReviewedPr,
@@ -151,14 +151,15 @@ async function runReview(ticketId, options = {}) {
       return;
     }
 
-    const git = latestFixGitContext(
-      ticket.messageRows,
+    const git = await resolveTicketGitContext(
+      client,
+      ticket,
       process.env.FIXER_BOT_USER_ID,
     );
     if (!git?.branch && !git?.prUrl) {
       await client.send(
         ticketId,
-        "Waiting for a `PR:` or `Branch:` line in this thread (fixer, code-bot, or GitHub).",
+        "Waiting for a linked **GitHub PR** on this ticket (GitHub panel), or a `PR:` / `Branch:` line in the thread from the fixer/code-bot.",
       );
       return;
     }
