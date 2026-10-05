@@ -1,0 +1,8 @@
+# Optional. Coolify should use the Dockerfile as a single Application (no domain).
+# Use this file only if you create a Coolify "Docker Compose" resource instead.
+services:
+  reviewer:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env

@@ -36,3 +36,27 @@ bun test src
 ```
 
 Use a **reviewer** bot token from JeiChat (not the fixer or checker token).
+
+## Docker
+
+```bash
+cp .env.example .env   # fill in tokens
+docker compose up --build
+```
+
+Or build and run without Compose:
+
+```bash
+docker build -t jeichat-reviewer-bot .
+docker run --rm --env-file .env jeichat-reviewer-bot
+```
+
+## Deploy (Coolify)
+
+This bot is one long-running process. It is **not** a website — no domain or HTTP proxy.
+
+1. Push this repo to GitHub.
+2. **New resource → Application** → this repo, build pack **Dockerfile**.
+3. Set env vars from `.env.example` (live `JEICHAT_API_URL`, reviewer token, `CURSOR_*`, optional `FIXER_BOT_USER_ID`).
+
+`docker-compose.yml` is a one-service wrapper for hosts that prefer Compose over a plain Dockerfile.

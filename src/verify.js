@@ -3,6 +3,7 @@ import { cursorAgentOptions } from "./cursor.js";
 import { verificationInstructions } from "./verify-instructions.js";
 import { ticketPageUrl } from "./ticket-link.js";
 import { enrichGitContextFromPullRequest } from "./github-pr.js";
+import { reviewRunTimeoutMs } from "./status.js";
 
 const MAX_BODY = 3500;
 
@@ -100,6 +101,21 @@ function isMissingRefError(error) {
   return /does not exist/i.test(error.message);
 }
 
+async function waitForRun(run, timeoutMs) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`review timed out after ${Math.round(timeoutMs / 60000)} minutes`)),
+      timeoutMs,
+    );
+  });
+  try {
+    return await Promise.race([run.wait(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function createReviewAgent(ticket, ctx) {
   const candidates = startingRefCandidates(ctx);
   if (candidates.length === 0) {
@@ -138,7 +154,7 @@ async function createReviewAgent(ticket, ctx) {
 /**
  * @param {object} ticket
  * @param {{ prUrl?: string | null; branch?: string | null }} ctx
- * @param {{ onAgent?: (agent: import("@cursor/sdk").SDKAgent) => void }} options
+ * @param {{ onAgent?: (agent: import("@cursor/sdk").SDKAgent) => void; onRunStarted?: (info: { agentId?: string | null }) => void }} options
  */
 export async function verifyTicket(ticket, ctx, options = {}) {
   let enriched = { ...ctx };
@@ -158,11 +174,15 @@ export async function verifyTicket(ticket, ctx, options = {}) {
     const created = await createReviewAgent(ticket, enriched);
     agent = created.agent;
     promptCtx = created.promptCtx;
+    const agentId = agent.id ?? agent.agentId ?? null;
     if (typeof options.onAgent === "function") {
       options.onAgent(agent);
     }
+    if (typeof options.onRunStarted === "function") {
+      options.onRunStarted({ agentId });
+    }
     const run = await agent.send(reviewPrompt(ticket, promptCtx));
-    const result = await run.wait();
+    const result = await waitForRun(run, reviewRunTimeoutMs());
     if (result.status !== "finished") {
       return `I could not finish the review (${result.status}${
         result.error?.message ? `: ${result.error.message}` : ""
@@ -172,6 +192,9 @@ export async function verifyTicket(ticket, ctx, options = {}) {
   } catch (error) {
     if (error instanceof CursorAgentError) {
       return `I could not start a Cursor review: ${error.message}`;
+    }
+    if (error instanceof Error && /timed out/i.test(error.message)) {
+      return `${error.message}. The cloud agent may still be running on [Cursor](https://cursor.com/agents). Tag me with \`retry\` after it finishes, or raise \`REVIEWER_RUN_TIMEOUT_MS\`.`;
     }
     throw error;
   } finally {

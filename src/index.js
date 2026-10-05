@@ -20,6 +20,7 @@ import {
 } from "./verification-artifacts.js";
 import { verifyTicket } from "./verify.js";
 import { latestCheckVerdict, checkReportFromMessage } from "./check-report.js";
+import { createRunTracker, cursorAgentUrl, formatReviewStatus } from "./status.js";
 
 const token = process.env.JEICHAT_BOT_TOKEN?.trim();
 if (!token) {
@@ -33,6 +34,7 @@ const client = new JeiChat({
 
 const reviewing = new Set();
 const debouncer = createReviewDebouncer();
+const runs = createRunTracker();
 
 client.on("ready", () => {
   console.log(
@@ -79,15 +81,13 @@ async function handleMention(message) {
     return;
   }
   if (command.name === "status") {
-    const busy = reviewing.has(ticketId);
-    const queued = debouncer.has(ticketId);
     await client.send(
       ticketId,
-      busy
-        ? "I am running a Cursor review on this ticket."
-        : queued
-          ? "A review is queued (waiting for the fixer PR message)."
-          : "No review in progress.",
+      formatReviewStatus({
+        run: runs.get(ticketId),
+        busy: reviewing.has(ticketId),
+        queued: debouncer.has(ticketId),
+      }),
     );
     return;
   }
@@ -101,6 +101,7 @@ async function handleMention(message) {
 }
 
 async function maybeStartReview(ticketId) {
+  if (reviewing.has(ticketId)) return;
   try {
     const ticket = await loadTicket(ticketId);
     if (ticket.status !== "in_review") return;
@@ -123,6 +124,7 @@ async function runReview(ticketId, options = {}) {
   }
 
   reviewing.add(ticketId);
+  debouncer.cancel(ticketId);
   let agentRef = null;
   try {
     const ticket = await loadTicket(ticketId);
@@ -180,14 +182,27 @@ async function runReview(ticketId, options = {}) {
       ticket.checkReport = checkReportFromMessage(check.message).content;
     }
 
-    await client.send(
-      ticketId,
-      `In review — checking ${git.branch ? `\`${git.branch}\`` : "the PR"}${git.prUrl ? ` (${git.prUrl})` : ""}. I will summarize changes and post verification screenshots.`,
-    );
-
     const summary = await verifyTicket(ticket, git, {
       onAgent(agent) {
         agentRef = agent;
+      },
+      onRunStarted({ agentId }) {
+        runs.start(ticketId, {
+          agentId,
+          branch: git.branch,
+          prUrl: git.prUrl,
+        });
+        const url = cursorAgentUrl(agentId);
+        void client.send(
+          ticketId,
+          [
+            `In review — checking ${git.branch ? `\`${git.branch}\`` : "the PR"}${git.prUrl ? ` (${git.prUrl})` : ""}.`,
+            url
+              ? `Cursor agent: ${url} (cloud reviews often take **10–25 min**).`
+              : "Cursor cloud review started (often **10–25 min**).",
+            "Use `@Review Bot status` for elapsed time.",
+          ].join("\n"),
+        );
       },
     });
 
@@ -214,6 +229,7 @@ async function runReview(ticketId, options = {}) {
     console.error("review failed", error);
     await client.send(ticketId, `Review failed: ${detail}`);
   } finally {
+    runs.end(ticketId);
     reviewing.delete(ticketId);
   }
 }

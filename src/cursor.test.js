@@ -30,6 +30,7 @@ test("cloud binds a named Cursor environment when CURSOR_CLOUD_ENVIRONMENT is se
   process.env.CURSOR_API_KEY = "cursor_test";
   process.env.CURSOR_RUNTIME = "cloud";
   process.env.CURSOR_REPO_URL = "https://github.com/jpmadrigal07/jeichat";
+  delete process.env.CURSOR_REPO_REF;
   process.env.CURSOR_CLOUD_ENVIRONMENT = "jpmadrigal07/jeichat";
 
   expect(cursorAgentOptions().cloud).toEqual({
