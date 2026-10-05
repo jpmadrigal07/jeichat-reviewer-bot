@@ -24,13 +24,14 @@ Copy-paste templates and a step-by-step checklist:
 | `src/client.js` | Minimal JeiChat REST + Socket.IO client |
 | `src/cursor.js` | Cursor SDK options (cloud env binding, no auto-PR) |
 
-`src/index.js` is a placeholder until ticket-trigger wiring is implemented.
+`src/index.js` connects to JeiChat and runs when a ticket moves to **In review** (or is assigned to the reviewer bot while In review).
 
 ## Run (local)
 
 ```bash
 bun install
 cp .env.example .env
+bun run start
 bun test src
 ```
 

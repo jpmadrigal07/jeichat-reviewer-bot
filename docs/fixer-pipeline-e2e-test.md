@@ -6,7 +6,7 @@ Checklist to validate **jeichat-fixer-bot** (fix + PR) and **jeichat-reviewer-bo
 
 - JeiChat: `bun run dev` (API `:3001`, web `:3000`)
 - Fixer: `bun run start` in `jeichat-fixer-bot` with `JEICHAT_BOT_TOKEN`, `CURSOR_API_KEY`, `CURSOR_RUNTIME=cloud`
-- Reviewer: `bun test src` in `jeichat-reviewer-bot` (runtime bot wiring is optional for this checklist)
+- Reviewer: `bun run start` in `jeichat-reviewer-bot` with `JEICHAT_BOT_TOKEN`, `CURSOR_API_KEY`, `FIXER_BOT_USER_ID` (recommended)
 - Optional: `CURSOR_CLOUD_ENVIRONMENT` on both bots = your Cursor Cloud env name for `jeichat`
 - Board connected to GitHub; R2 configured if you want verification screenshots uploaded
 
@@ -16,7 +16,7 @@ Checklist to validate **jeichat-fixer-bot** (fix + PR) and **jeichat-reviewer-bo
 2. Label **Bug**, assign **Fix Bot**, confirm the fixer posts the linked repo.
 3. Post the checker message from [`templates/checker-confirm-fixer-e2e.md`](../templates/checker-confirm-fixer-e2e.md).
 4. Watch the ticket: **In progress** → fix summary → `PR:` / `Branch:` when cloud opens a PR.
-5. Optional: assign **Review Bot** when verification automation is wired; until then, use reviewer modules in a manual Cursor run with `verificationInstructions()`.
+5. When the ticket is **In review**, **Review Bot** should start automatically (or assign it on an In review ticket). It reads `PR:` / `Branch:` from the fixer, runs Cursor on that branch, posts a **Changes** summary, and uploads verification PNGs when configured.
 
 ## What you are testing
 
