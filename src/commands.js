@@ -8,14 +8,27 @@ export function helpText(botName) {
   ].join("\n");
 }
 
+const COMMAND_WORDS = new Set(["help", "retry", "status", "go", "start"]);
+
 export function parseReviewerCommand(text) {
-  const trimmed = String(text ?? "").trim();
+  let trimmed = String(text ?? "").trim();
   if (!trimmed) return { name: "help" };
 
-  const [head] = trimmed.split(/\s+/);
-  const name = head.toLowerCase().replace(/[.,!?]+$/g, "");
-  if (name === "help") return { name: "help" };
-  if (name === "retry") return { name: "retry" };
-  if (name === "status") return { name: "status" };
+  // "@Echo bot status" → "bot status"
+  trimmed = trimmed.replace(/^bot\s+/i, "");
+
+  const tokens = trimmed.split(/\s+/).map((part) =>
+    part.toLowerCase().replace(/[.,!?]+$/g, ""),
+  );
+
+  for (const name of tokens) {
+    if (name === "help") return { name: "help" };
+    if (name === "retry") return { name: "retry" };
+    if (name === "status") return { name: "status" };
+    if (name === "go" || name === "start") return { name: "retry" };
+  }
+
+  const head = tokens[0];
+  if (head && COMMAND_WORDS.has(head)) return { name: head };
   return { name: "unknown", raw: trimmed };
 }

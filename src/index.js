@@ -68,7 +68,9 @@ client.on("messageCreate", (message) => {
 });
 
 async function handleMention(message) {
-  if (message.author?.bot) return;
+  if (!message) return;
+  const botUserId = client.user?.userId;
+  if (message.sender?.isBot || message.senderId === botUserId) return;
   const botName = client.user?.name ?? "";
   if (!botName || !isBotMentioned(message.content, botName)) return;
 
