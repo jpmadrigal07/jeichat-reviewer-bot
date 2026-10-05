@@ -6,6 +6,8 @@ test("parses status after optional bot word", () => {
   expect(parseReviewerCommand("status").name).toBe("status");
 });
 
-test("unknown command is not status", () => {
-  expect(parseReviewerCommand("bot please").name).toBe("unknown");
+test("free text becomes a note for access hints", () => {
+  expect(parseReviewerCommand("this needs an account to access").name).toBe(
+    "note",
+  );
 });

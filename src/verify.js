@@ -17,6 +17,7 @@ function formatGitBlock(ctx) {
 export function reviewPrompt(ticket, ctx) {
   const pageUrl = ticket.pageUrl || ticketPageUrl(ticket);
   const checkReport = ticket.checkReport?.trim() || "(none)";
+  const accessBlock = ticket.accessContext?.trim();
   const verifyBlock = verificationInstructions({
     pageUrl,
     runtime: process.env.CURSOR_RUNTIME,
@@ -39,6 +40,9 @@ ${branchLine}
 
 Checker report (what we are validating still works):
 ${checkReport}
+
+Access / login (from ticket description and thread — treat as required when listed):
+${accessBlock || "(none — if the UI needs auth, use REVIEWER_TEST_EMAIL / REVIEWER_TEST_PASSWORD from the Cursor cloud environment, or Result: FAIL explaining that login is required and credentials are missing.)"}
 
 Your job:
 1. Inspect the **diff** on this branch vs its merge base. Summarize user-visible and important code changes (files, behavior). Be specific; quote paths.

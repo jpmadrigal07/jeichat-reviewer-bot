@@ -21,6 +21,10 @@ import {
 import { verifyTicket } from "./verify.js";
 import { latestCheckVerdict, checkReportFromMessage } from "./check-report.js";
 import { createRunTracker, cursorAgentUrl, formatReviewStatus } from "./status.js";
+import {
+  collectAccessContext,
+  formatAccessNoteAck,
+} from "./access-context.js";
 
 const token = process.env.JEICHAT_BOT_TOKEN?.trim();
 if (!token) {
@@ -95,6 +99,13 @@ async function handleMention(message) {
   }
   if (command.name === "retry") {
     void runReview(ticketId, { forceRetry: true });
+    return;
+  }
+  if (command.name === "note") {
+    await client.send(
+      ticketId,
+      formatAccessNoteAck(command.text, botName),
+    );
     return;
   }
   if (command.name === "unknown") {
@@ -184,6 +195,11 @@ async function runReview(ticketId, options = {}) {
       ticket.checkReport = checkReportFromMessage(check.message).content;
     }
 
+    ticket.accessContext = collectAccessContext(ticket, {
+      botName: client.user?.name,
+      botUserId: client.user?.userId,
+    });
+
     const summary = await verifyTicket(ticket, git, {
       onAgent(agent) {
         agentRef = agent;
@@ -202,7 +218,7 @@ async function runReview(ticketId, options = {}) {
             url
               ? `Cursor agent: ${url} (cloud reviews often take **10–25 min**).`
               : "Cursor cloud review started (often **10–25 min**).",
-            "Use `@Review Bot status` for elapsed time.",
+            `Use \`@${client.user?.name ?? "Review Bot"} status\` for elapsed time.`,
           ].join("\n"),
         );
       },

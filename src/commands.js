@@ -4,6 +4,7 @@ export function helpText(botName) {
     "Move the ticket to **In review** (or assign me on an In review ticket) after the fixer posts `PR:` / `Branch:`.",
     `\`${tag} retry\` — run verification again`,
     `\`${tag} status\` — am I busy on this ticket?`,
+    `\`${tag} needs an account to access\` — note login required (then retry)`,
     `\`${tag} help\` — this list`,
   ].join("\n");
 }
@@ -30,5 +31,7 @@ export function parseReviewerCommand(text) {
 
   const head = tokens[0];
   if (head && COMMAND_WORDS.has(head)) return { name: head };
+
+  if (trimmed) return { name: "note", text: trimmed };
   return { name: "unknown", raw: trimmed };
 }
