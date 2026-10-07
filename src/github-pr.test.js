@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { parseGithubPullRequestUrl, parseGithubRepoUrl } from "./github-pr.js";
+import {
+  parseGithubPullRequestUrl,
+  parseGithubRepoUrl,
+  pullHeadGitRef,
+} from "./github-pr.js";
 
 test("parses GitHub pull request URLs", () => {
   expect(
@@ -9,6 +13,10 @@ test("parses GitHub pull request URLs", () => {
     repo: "jeichat",
     number: 22,
   });
+});
+
+test("builds pull head ref", () => {
+  expect(pullHeadGitRef(23)).toBe("refs/pull/23/head");
 });
 
 test("parses GitHub repo URLs", () => {

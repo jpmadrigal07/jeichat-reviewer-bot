@@ -1,4 +1,4 @@
-import { latestFixGitContext } from "./fix-context.js";
+import { latestFixGitContext, mergeGitContextFromMessages } from "./fix-context.js";
 
 export function parseBranchFromSpec(description) {
   const text = String(description ?? "");
@@ -58,30 +58,34 @@ export function latestGithubPullRequestEvent(events) {
  * @param {string | undefined} fixerUserId
  */
 export async function resolveTicketGitContext(client, ticket, fixerUserId) {
-  const fromMessages = latestFixGitContext(ticket.messageRows, fixerUserId);
-  if (fromMessages?.prUrl || fromMessages?.branch) {
-    return fromMessages;
-  }
+  const fromMessages =
+    latestFixGitContext(ticket.messageRows, fixerUserId) ??
+    mergeGitContextFromMessages(ticket.messageRows);
 
-  const branchHint =
-    parseBranchFromSpec(ticket.description) ||
-    suggestedBranchForTicket(ticket) ||
-    null;
-
-  let prUrl = null;
+  let prFromEvents = null;
   try {
     const events = await client.get(
       `/workspaces/${ticket.workspaceId}/channels/${ticket.id}/events`,
     );
-    const pr = latestGithubPullRequestEvent(events);
-    prUrl = pr?.prUrl ?? null;
+    prFromEvents = latestGithubPullRequestEvent(events);
   } catch (error) {
     console.error("could not load ticket GitHub events", error);
   }
 
-  if (prUrl || branchHint) {
-    return { prUrl, branch: branchHint };
-  }
+  const prUrl = fromMessages?.prUrl ?? prFromEvents?.prUrl ?? null;
+  const prNumber = prFromEvents?.prNumber ?? null;
 
-  return null;
+  const branchHint =
+    fromMessages?.branch ||
+    parseBranchFromSpec(ticket.description) ||
+    suggestedBranchForTicket(ticket) ||
+    null;
+
+  if (!prUrl && !branchHint) return null;
+
+  return {
+    prUrl,
+    prNumber,
+    branch: branchHint,
+  };
 }

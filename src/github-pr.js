@@ -43,24 +43,38 @@ export async function fetchGithubPullRequest(target, options = {}) {
  * @param {string | null | undefined} repoUrl
  */
 export async function enrichGitContextFromPullRequest(ctx, repoUrl) {
-  if (!ctx?.prUrl) return ctx;
-
   const fromPr = parseGithubPullRequestUrl(ctx.prUrl);
+  const prNumber = ctx.prNumber ?? fromPr?.number ?? null;
+  if (!ctx?.prUrl && !prNumber) return ctx;
+
+  if (!ctx?.prUrl && prNumber) {
+    const fromRepo = parseGithubRepoUrl(repoUrl);
+    if (fromRepo) {
+      ctx = {
+        ...ctx,
+        prUrl: `https://github.com/${fromRepo.owner}/${fromRepo.repo}/pull/${prNumber}`,
+      };
+    }
+  }
+
+  const fromPrResolved = parseGithubPullRequestUrl(ctx.prUrl);
   const fromRepo = parseGithubRepoUrl(repoUrl);
-  const owner = fromPr?.owner ?? fromRepo?.owner;
-  const repo = fromPr?.repo ?? fromRepo?.repo;
-  if (!owner || !repo || !fromPr?.number) return ctx;
+  const owner = fromPrResolved?.owner ?? fromRepo?.owner;
+  const repo = fromPrResolved?.repo ?? fromRepo?.repo;
+  const number = fromPrResolved?.number ?? prNumber;
+  if (!owner || !repo || !number) return ctx;
 
   const pr = await fetchGithubPullRequest({
     owner,
     repo,
-    number: fromPr.number,
+    number,
   });
 
   const branch = pr?.head?.ref ?? ctx.branch ?? null;
   const headSha = pr?.head?.sha ?? null;
   const baseRef = pr?.base?.ref ?? null;
-  const startingRef = headSha ?? branch ?? null;
+  const pullHeadRef = pullHeadGitRef(pr?.number ?? number);
+  const startingRef = headSha ?? pullHeadRef ?? branch ?? null;
 
   return {
     ...ctx,
@@ -68,6 +82,14 @@ export async function enrichGitContextFromPullRequest(ctx, repoUrl) {
     branch,
     headSha,
     baseRef,
+    prNumber: pr?.number ?? number,
+    pullHeadRef,
     startingRef,
   };
+}
+
+export function pullHeadGitRef(prNumber) {
+  const n = Number(prNumber);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return `refs/pull/${n}/head`;
 }

@@ -89,6 +89,7 @@ function startingRefCandidates(ctx) {
   for (const ref of [
     ctx.startingRef,
     ctx.headSha,
+    ctx.pullHeadRef,
     ctx.branch,
     ctx.baseRef,
   ]) {
@@ -152,6 +153,15 @@ async function createReviewAgent(ticket, ctx) {
       throw error;
     }
   }
+  const hint = ctx.prUrl
+    ? ` Could not clone from PR ${ctx.prUrl}${ctx.githubResolveError ? ` (${ctx.githubResolveError})` : ""}.`
+    : "";
+  if (lastError instanceof CursorAgentError) {
+    throw new CursorAgentError(
+      `${lastError.message}${hint} Check that the PR branch exists on GitHub and the board repo matches CURSOR_REPO_URL.`,
+      { cause: lastError },
+    );
+  }
   throw lastError;
 }
 
@@ -166,6 +176,8 @@ export async function verifyTicket(ticket, ctx, options = {}) {
     enriched = await enrichGitContextFromPullRequest(enriched, ticket.repoUrl);
   } catch (error) {
     console.error("could not resolve PR from GitHub", error);
+    enriched.githubResolveError =
+      error instanceof Error ? error.message : "GitHub PR lookup failed";
   }
 
   if (!enriched.branch && !enriched.prUrl && !enriched.startingRef) {
